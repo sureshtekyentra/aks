@@ -10,7 +10,7 @@ spec:
         app: gs-spring-boot-docker
     spec:
       containers:
-      - image: myecrrepo.azurecr.io/gs-spring-boot-docker:__Build.BuildId__
+      - image: myecrrepo.azurecr.io/gs-spring-boot-docker:latest
         name: gs-spring-boot-docker
         imagePullPolicy: Always
         ports:
