@@ -26,7 +26,7 @@ pipeline {
 			steps {
 			
 						sh '''
-						   echo "CREATE DATABASE IF NOT EXISTS ${SERVICENAMEPREFIX};CREATE USER IF NOT EXISTS ${admin}@${SERVICENAMEPREFIX} IDENTIFIED BY '${WPPASSWORD}';GRANT ALL PRIVILEGES ON ${SERVICENAMEPREFIX}.* TO '${admin}'@'%' IDENTIFIED BY '${WPPASSWORD}' WITH GRANT OPTION;"| mysql -h wordpresssitedb.camak7woznuo.us-west-2.rds.amazonaws.com -u admin -pL5gG76o7VQPa
+						   echo "CREATE DATABASE IF NOT EXISTS ${SERVICENAMEPREFIX};CREATE USER IF NOT EXISTS ${admin}@${SERVICENAMEPREFIX} IDENTIFIED BY '${WPPASSWORD}';GRANT ALL PRIVILEGES ON ${SERVICENAMEPREFIX}.* TO '${admin}'@'%' IDENTIFIED BY '${WPPASSWORD}' WITH GRANT OPTION;"| mysql -h wordpresssitedb.camak7woznuo.us-west-2.rds.amazonaws.com -u admin '${WPPASSWORD}'
 								'''
 						}
 					}
