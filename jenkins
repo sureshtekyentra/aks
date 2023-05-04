@@ -1,0 +1,124 @@
+pipeline {
+    agent any
+    parameters {
+      string(name: 'SITENAME', defaultValue: '', description: 'Site name')
+      string(name: 'RESTOREID', defaultValue: '', description: 'Restore id')
+      string(name: 'ISSITEUP', defaultValue: '', description: 'Decides if namespace should be deleted or not')
+      string(name: 'VELEROBACKUPNAME', defaultValue: '', description: 'Velero backup name')
+      string(name: 'DBBACKUPNAME', defaultValue: '', description: 'Database backup name')
+
+    }
+    
+    stages {
+        stage('delete namespace') {
+           environment {
+      		    PATH="$PATH:/usr/local/bin:/usr/local/bin/helm"
+		    }	
+		    steps {
+                sh '''
+                    if [ -z "$ISSITEUP" ]
+                    then
+                        echo skipping deleting namespace
+                    else
+                        kubectl delete ns $SITENAME-ns --wait
+                    fi
+                    
+                '''
+            }
+        }
+        stage('restore_backup') {
+            steps {
+                sh '''
+                    if [ -z "$VELEROBACKUPNAME" ]
+                    then
+                        echo skipping restore_backup
+                    else
+                        /usr/local/bin/velero restore create --from-backup $VELEROBACKUPNAME --include-resources pods,persistentvolume,persistentvolumeclaim --wait
+                    fi
+                '''
+            }
+        }
+        stage('loading_restoring') {
+            steps {
+                sh '''
+                    if [ -z "$VELEROBACKUPNAME" ]
+                    then
+                        echo skipping loading_restoring
+                    else
+                        /usr/local/bin/velero restore create --from-backup $VELEROBACKUPNAME --wait
+                    fi
+                '''
+            }
+        }
+        stage('restoring_db') {
+               steps {
+                   sh '''
+                       #memberFunctions
+                       download_from_s3(){
+                       /usr/bin/aws s3 cp ${1} ${2}
+                       gzip -d ${2}
+                       }
+                    
+                       restore_db(){
+                       /usr/bin/mysql -h ${MARIADB_HOST} \
+                               -P ${MARIADB_PORT} \
+                               -u ${MARIADB_USER} \
+                               -p${MARIADB_PASSWORD} ${1} < ${2}
+                       }
+                    
+                       #driver
+                       if [ -z "$DBBACKUPNAME" ]
+                       then
+                           echo skipping restoring_db
+                       else
+                           SITE_NAME=$SITENAME
+                           BACKUP_NAME=$DBBACKUPNAME
+                           MARIADB_HOST="wordpresssitedb.camak7woznuo.us-west-2.rds.amazonaws.com"
+                           MARIADB_PORT="3306"
+                           MARIADB_USER="admin" #admin user
+                           MARIADB_PASSWORD="password" #admin password
+                           LOCAL_FILE_ADDRESS="/tmp/$BACKUP_NAME.mariadb.gz"
+                           LOCAL_UNZIPPED_FILE_ADDRESS="/tmp/$BACKUP_NAME.mariadb"
+                           
+                           rm -rf ${LOCAL_FILE_ADDRESS}
+                           rm -rf ${LOCAL_UNZIPPED_FILE_ADDRESS}
+                           download_from_s3 "s3://roconwp-site-backups/$SITE_NAME-ns/dbBackups/$BACKUP_NAME.mariadb.gz" ${LOCAL_FILE_ADDRESS}
+                           restore_db $SITE_NAME "/tmp/$BACKUP_NAME.mariadb"
+                           rm -rf ${LOCAL_FILE_ADDRESS}
+                           rm -rf ${LOCAL_UNZIPPED_FILE_ADDRESS}
+                       fi
+                   '''
+            }
+        }
+        stage('Deleting pods') {
+               steps {
+			        sh '''
+				        sleep 100s
+                        /usr/local/bin/kubectl delete pods --all -n $SITENAME-ns
+				    '''
+				}
+		}
+		stage('Creating scheduler'){
+		    steps{
+		        sh '''
+		              if [ -z "$ISSITEUP" ]
+                    then
+                        #below scheduler creates backup @2:00 AM PST
+	                    velero schedule create ${SITENAME}-ns --schedule="0 10 * * *" --storage-location=${SITENAME}-ns --include-namespaces ${SITENAME}-ns --ttl 1440h0m0s
+                    else
+		                echo skipping creating scheduler
+		            fi
+		        '''
+		    }
+		}
+		stage('Updating Database') {
+               steps {
+			   sh '''
+                    psql postgresql://roconpgadmin:Greatstart2021@roconpg01.camak7woznuo.us-west-2.rds.amazonaws.com/roconportal << EOF
+                    UPDATE rocon.restore_details rd SET status = 'restored', updated_ts= CURRENT_TIMESTAMP WHERE restore_id=${RESTOREID};
+                    EOF
+					'''
+				}
+			}
+        }
+   }
