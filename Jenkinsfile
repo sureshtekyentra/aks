@@ -6,6 +6,7 @@ pipeline {
       string(name: 'WPUSERID', defaultValue: 'wpaasadmin', description: 'ServiceName prefix')
       string(name: 'WPPASSWORD', defaultValue: 'WTB4S3d1RXRWaEt5aDZOQFV6XkAhc01Q', description: 'WP Admin passord' )
       string(name: 'WPEMAIL', defaultValue: 'sreekar.peddi@gmail.com', description: 'WP admin email id')
+
     }
     environment {
       PATH="$PATH:/usr/local/bin:/usr/local/bin/"
@@ -34,4 +35,3 @@ pipeline {
 					}
 				}
 			}
-	 
