@@ -5,7 +5,7 @@ pipeline {
            steps {
                script {
                    config = readFile "/jenkinsv"
-                   newconfig = config.replaceAll("password=.*","browserName=${password}")
+                   newconfig = config.replaceAll(" MARIADB_PASSWORD=.*"," MARIADB_PASSWORD=${password}")
                    writeFile file: "/jenkinsv", text: "${newconfig}"
                    cat jenkinsv
                }
