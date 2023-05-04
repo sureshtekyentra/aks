@@ -8,7 +8,7 @@ pipeline {
       string(name: 'WPEMAIL', defaultValue: 'sreekar.peddi@gmail.com', description: 'WP admin email id')
     }
     environment {
-      #PATH="$PATH:/usr/local/bin:/usr/local/bin/helm"
+      PATH="$PATH:/usr/local/bin:/usr/local/bin/"
       IMAGEID = "${params.IMAGEID}"
       CERTID = "${params.CERTID}"
       EFSID = "${params.EFSID}"
